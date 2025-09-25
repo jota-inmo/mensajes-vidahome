@@ -18,18 +18,25 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
   stepNumber,
 }) => {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    setIsLoading(true);
+    // A specific lookup doesn't need a loading state in the same way, but good for debounce
+    setIsLoading(true); 
     // Debounce the search to avoid excessive API calls
     const handler = setTimeout(() => {
+      // Don't search if the term is too short or empty
+      if (searchTerm.trim() === '') {
+        setProperties([]);
+        setIsLoading(false);
+        return;
+      }
       fetchProperties(searchTerm).then(fetchedProperties => {
         setProperties(fetchedProperties);
         setIsLoading(false);
       });
-    }, 300);
+    }, 500);
 
     return () => {
       clearTimeout(handler);
@@ -52,15 +59,16 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
       </div>
       
       <Input
-        placeholder="Buscar por referencia o título..."
+        placeholder="Buscar por referencia o código..."
         className="mb-4"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        aria-label="Buscar propiedad por referencia o código"
       />
 
       <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-        {isLoading ? (
-            <p className="text-slate-500 text-center py-4">Buscando propiedades...</p>
+        {isLoading && searchTerm.trim() ? (
+            <p className="text-slate-500 text-center py-4">Buscando propiedad...</p>
         ) : properties.length > 0 ? (
           properties.map((property) => (
             <div
@@ -88,7 +96,7 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
             </div>
           ))
         ) : (
-          <p className="text-slate-500 text-center py-4">No se encontraron propiedades.</p>
+          searchTerm.trim() && <p className="text-slate-500 text-center py-4">No se encontró la propiedad.</p>
         )}
       </div>
     </Card>

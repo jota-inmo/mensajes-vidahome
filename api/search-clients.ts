@@ -27,17 +27,35 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json([]);
     }
 
-    // CORRECTED: Use the 'search' parameter for a general text search as per API documentation.
-    const crmApiUrl = `${CRM_API_BASE_URL}/contactos?search=${encodeURIComponent(searchTerm)}`;
+    // UPDATED: Use the /clientes/buscar/ endpoint as per documentation.
+    let crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/`;
+    const params = new URLSearchParams();
+
+    // Determine if the search term is a phone number or an email.
+    if (searchTerm.includes('@')) {
+        params.append('email', searchTerm);
+    } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
+        params.append('telefono', searchTerm.replace(/\s/g, ''));
+    } else {
+        // The documented API endpoint doesn't support searching by name.
+        // Returning an empty array for other searches. UI has been updated to reflect this.
+        return res.status(200).json([]);
+    }
+    
+    crmApiUrl += `?${params.toString()}`;
 
     try {
         const crmResponse = await fetch(crmApiUrl, {
             headers: {
-                // Correct Authorization header for Apinmo API
-                'Authorization': `token ${CRM_API_KEY}`,
+                'Authorization': `Token ${CRM_API_KEY}`,
                 'Content-Type': 'application/json'
             }
         });
+
+        // API docs say 404 means "Sin resultados", treat as empty response.
+        if (crmResponse.status === 404) {
+            return res.status(200).json([]);
+        }
 
         if (!crmResponse.ok) {
             const errorText = await crmResponse.text();
