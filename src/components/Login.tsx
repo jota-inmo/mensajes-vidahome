@@ -23,8 +23,12 @@ const Login: React.FC = () => {
         return 'La contraseña es incorrecta. Por favor, inténtalo de nuevo.';
       case 'auth/invalid-email':
         return 'El formato del correo electrónico no es válido.';
+      case 'auth/operation-not-allowed':
+        return 'Error: El inicio de sesión con email/contraseña no está habilitado en la configuración de Firebase.';
+      case 'auth/too-many-requests':
+        return 'Has intentado iniciar sesión demasiadas veces. Por favor, inténtalo más tarde.';
       default:
-        return 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
+        return `Ocurrió un error inesperado. Código: ${code}`;
     }
   };
 
