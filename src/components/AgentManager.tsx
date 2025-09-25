@@ -1,8 +1,8 @@
 
+
 import React from 'react';
 import { Agent } from '../types';
 import { Card } from './ui/Card';
-import { UserPlusIcon } from './ui/Icons'; // Re-using an icon, could be a more specific one
 
 interface AgentManagerProps {
   agents: Agent[];
