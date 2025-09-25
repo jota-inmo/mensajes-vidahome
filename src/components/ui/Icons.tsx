@@ -21,9 +21,12 @@ export const WhatsAppIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
 
 export const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-3.04 8.356-7.108 9.461-.317.052-.612.115-.892.186a48.435 48.435 0 0 1-3.996 0c-.28-.071-.575-.134-.892-.186C5.04 20.356 2 16.556 2 12c0-4.556 3.04-8.356 7.108-9.461.317-.052.612-.115.892-.186a48.447 48.447 0 0 1 3.996 0c.28.071.575.134.892.186C17.96 3.644 21 7.444 21 12Z" />
+      {/* Chat bubble outline */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10z" />
+      {/* House outline inside */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 11.5l4-3 4 3M8 11.5v3h8v-3" />
     </svg>
-  );
+);
 
 export const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
