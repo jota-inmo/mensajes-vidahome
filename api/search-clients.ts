@@ -1,7 +1,7 @@
 // Vercel Serverless Function: /api/search-clients.ts
 
 // Define a type for the expected API response for a client
-interface ApinmoClient {
+interface InmovillaClient {
     nombre: string;
     apellidos: string;
     telefono1: string;
@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
 
     const { searchTerm } = req.query;
     const CRM_API_KEY = process.env.CRM_API_KEY;
-    // The base URL should be set to "https://procesos.apinmo.com/api/v1" in Vercel env vars
+    // The base URL should be set to "https://procesos.inmovilla.com/api/v1" in Vercel env vars
     const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
 
     if (!CRM_API_KEY || !CRM_API_BASE_URL) {
@@ -27,7 +27,6 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json([]);
     }
 
-    // UPDATED: Use the /clientes/buscar/ endpoint as per documentation.
     let crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/`;
     const params = new URLSearchParams();
 
@@ -38,7 +37,6 @@ export default async function handler(req: any, res: any) {
         params.append('telefono', searchTerm.replace(/\s/g, ''));
     } else {
         // The documented API endpoint doesn't support searching by name.
-        // Returning an empty array for other searches. UI has been updated to reflect this.
         return res.status(200).json([]);
     }
     
@@ -47,12 +45,11 @@ export default async function handler(req: any, res: any) {
     try {
         const crmResponse = await fetch(crmApiUrl, {
             headers: {
-                'Authorization': `Token ${CRM_API_KEY}`,
+                'Token': CRM_API_KEY, // CORRECTED: Use 'Token' header as per documentation
                 'Content-Type': 'application/json'
             }
         });
 
-        // API docs say 404 means "Sin resultados", treat as empty response.
         if (crmResponse.status === 404) {
             return res.status(200).json([]);
         }
@@ -63,10 +60,12 @@ export default async function handler(req: any, res: any) {
             return res.status(crmResponse.status).json({ error: 'Error al comunicarse con el CRM.' });
         }
 
-        const data: ApinmoClient[] = await crmResponse.json();
+        // Handle cases where API might return a single object or an array
+        const data: InmovillaClient[] | InmovillaClient = await crmResponse.json();
+        const dataArray = Array.isArray(data) ? data : [data];
         
-        // Adapt the Apinmo API response to the format the frontend expects (Client type)
-        const adaptedClients = data.map(c => ({
+        // Adapt the Inmovilla API response to the format the frontend expects (Client type)
+        const adaptedClients = dataArray.map(c => ({
             name: `${c.nombre || ''} ${c.apellidos || ''}`.trim(),
             phone: c.telefono1 || c.telefono2 || '',
         }));

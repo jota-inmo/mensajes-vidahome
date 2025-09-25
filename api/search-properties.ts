@@ -1,15 +1,15 @@
 // Vercel Serverless Function: /api/search-properties.ts
 
 // Define a type for the expected API response for a property for better mapping
-// UPDATED: Based on new documentation for fetching a single property.
-// Assuming some fields from the old response might still be present for a richer UI.
-interface ApinmoProperty {
+interface InmovillaProperty {
     cod_ofer: number;
     ref: string;
-    tipo_inmueble_text?: string; // Optional for graceful degradation
+    calle?: string;
+    // These fields are not directly in the GET response but might be inferred or from other endpoints.
+    // We keep the logic from before for a richer UI, but it will handle missing fields gracefully.
+    tipo_inmueble_text?: string; 
     zona_text?: string;
     poblacion_text?: string;
-    calle?: string;
     fotos?: { url_250: string; }[];
 }
 
@@ -20,7 +20,7 @@ export default async function handler(req: any, res: any) {
 
     const { searchTerm } = req.query;
     const CRM_API_KEY = process.env.CRM_API_KEY;
-    // The base URL should be set to "https://procesos.apinmo.com/api/v1" in Vercel env vars
+    // The base URL should be set to "https://procesos.inmovilla.com/api/v1" in Vercel env vars
     const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
 
     if (!CRM_API_KEY || !CRM_API_BASE_URL) {
@@ -30,15 +30,13 @@ export default async function handler(req: any, res: any) {
     const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
 
     if (!query) {
-        // A lookup needs a term. If it's empty, we return empty results.
         return res.status(200).json([]);
     }
 
-    // UPDATED: Use the '/propiedades/' endpoint and determine if searching by 'cod_ofer' or 'ref'.
     let crmApiUrl = `${CRM_API_BASE_URL}/propiedades/`;
     const params = new URLSearchParams();
 
-    // A simple check: if it's all digits, assume it's cod_ofer. Otherwise, assume ref.
+    // If it's all digits, assume it's cod_ofer. Otherwise, assume ref.
     if (/^\d+$/.test(query)) {
         params.append('cod_ofer', query);
     } else {
@@ -49,12 +47,11 @@ export default async function handler(req: any, res: any) {
     try {
         const crmResponse = await fetch(crmApiUrl, {
             headers: {
-                'Authorization': `Token ${CRM_API_KEY}`,
+                'Token': CRM_API_KEY, // CORRECTED: Use 'Token' header as per documentation
                 'Content-Type': 'application/json'
             }
         });
 
-        // The API for a single item might return 404 if not found. Treat as empty result.
         if (crmResponse.status === 404) {
              return res.status(200).json([]);
         }
@@ -65,10 +62,9 @@ export default async function handler(req: any, res: any) {
             return res.status(crmResponse.status).json({ error: 'Error al comunicarse con el CRM.' });
         }
 
-        // The response is a single property object, not an array.
-        const data: ApinmoProperty = await crmResponse.json();
+        const data: InmovillaProperty = await crmResponse.json();
         
-        // Adapt the Apinmo API response to the format the frontend expects (Property type)
+        // Adapt the Inmovilla API response to the format the frontend expects (Property type)
         const title = data.tipo_inmueble_text 
             ? `${data.tipo_inmueble_text} en ${data.zona_text || data.poblacion_text || data.calle || 'ubicación desconocida'}`
             : `Propiedad en ${data.calle || data.zona_text || data.poblacion_text || 'ubicación desconocida'}`;
@@ -83,7 +79,6 @@ export default async function handler(req: any, res: any) {
             imageUrl: data.fotos && data.fotos.length > 0 ? data.fotos[0].url_250 : undefined,
         };
         
-        // The frontend expects an array, so wrap the single result in an array.
         res.status(200).json([adaptedProperty]);
 
     } catch (error) {
