@@ -3,67 +3,91 @@ import React, { useState } from 'react';
 import { auth, db } from '../services/firebase';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { LogoIcon, GoogleIcon } from './ui/Icons';
+import { Input } from './ui/Input';
+import { LogoIcon, MailIcon, LockClosedIcon, UserCircleIcon } from './ui/Icons';
 
 declare var firebase: any;
 
 const Login: React.FC = () => {
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setIsLoading(true);
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const requiredDomain = 'vidahome.es'; // Restringe el acceso a este dominio
-    provider.setCustomParameters({
-      hd: requiredDomain
-    });
-
-    try {
-      const result = await auth.signInWithPopup(provider);
-      const user = result.user;
-
-      if (user && user.email && user.email.endsWith('@' + requiredDomain)) {
-        // El usuario pertenece al dominio correcto, verificamos si su perfil existe
-        const userDocRef = db.collection('usuarios').doc(user.uid);
-        const doc = await userDocRef.get();
-
-        if (!doc.exists) {
-          // El perfil no existe, lo creamos
-          await userDocRef.set({
-            nombre: user.displayName || 'Agente',
-            email: user.email,
-            telefono: user.phoneNumber || '',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-      } else {
-        // Si el usuario logró iniciar sesión con otra cuenta, lo deslogueamos
-        await auth.signOut();
-        setError(`Acceso restringido. Utiliza una cuenta de @${requiredDomain}.`);
-      }
-    } catch (err: any) {
-      // Gestión de errores mejorada
-      switch (err.code) {
-        case 'auth/popup-closed-by-user':
-        case 'auth/cancelled-popup-request':
-          // El usuario cerró la ventana, no es necesario mostrar un error.
-          break;
-        case 'auth/popup-blocked-by-browser':
-          setError('El navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio.');
-          break;
-        case 'auth/unauthorized-domain':
-            setError('Este dominio no está autorizado para iniciar sesión. Contacta al administrador.');
-            break;
-        default:
-          setError('Ocurrió un error al iniciar sesión. Por favor, inténtalo de nuevo.');
-          console.error("Error de inicio de sesión:", err);
-      }
-    } finally {
-        setIsLoading(false);
+  const getErrorMessage = (code: string): string => {
+    switch (code) {
+      case 'auth/user-not-found':
+        return 'No se encontró ningún usuario con este correo electrónico.';
+      case 'auth/wrong-password':
+        return 'La contraseña es incorrecta. Por favor, inténtalo de nuevo.';
+      case 'auth/invalid-email':
+        return 'El formato del correo electrónico no es válido.';
+      case 'auth/email-already-in-use':
+        return 'Este correo electrónico ya está registrado. Por favor, inicia sesión.';
+      case 'auth/weak-password':
+        return 'La contraseña debe tener al menos 6 caracteres.';
+      case 'auth/operation-not-allowed':
+          return 'El inicio de sesión con correo y contraseña no está habilitado.';
+      default:
+        return 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    if (isLoginMode) {
+      // --- LOGIN ---
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // onAuthStateChanged in App.tsx will handle navigation
+      } catch (err: any) {
+        setError(getErrorMessage(err.code));
+      }
+    } else {
+      // --- SIGN UP ---
+      const requiredDomain = 'vidahome.es';
+      if (!email.endsWith('@' + requiredDomain)) {
+          setError(`El registro está restringido a cuentas de @${requiredDomain}.`);
+          setIsLoading(false);
+          return;
+      }
+      if (!name.trim()) {
+        setError('El nombre es obligatorio para el registro.');
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        if (user) {
+          // Create user profile in Firestore
+          await db.collection('usuarios').doc(user.uid).set({
+            nombre: name,
+            email: user.email,
+            telefono: '', // Phone number can be added later
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          // onAuthStateChanged will handle the rest
+        }
+      } catch (err: any) {
+        setError(getErrorMessage(err.code));
+      }
+    }
+    setIsLoading(false);
+  };
+  
+  const toggleMode = () => {
+    setIsLoginMode(!isLoginMode);
+    setError(null);
+    setEmail('');
+    setPassword('');
+    setName('');
+  }
 
   return (
     <div className="bg-slate-900 min-h-screen flex flex-col items-center justify-center p-4">
@@ -71,27 +95,71 @@ const Login: React.FC = () => {
         <LogoIcon className="h-12 w-12 text-emerald-400"/>
         <h1 className="text-4xl font-bold text-white tracking-tight">Centro de Mensajes</h1>
       </div>
-      <Card className="w-full max-w-md text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          Acceso para Agentes
+      <Card className="w-full max-w-sm">
+        <h2 className="text-2xl font-bold text-white mb-2 text-center">
+          {isLoginMode ? 'Acceso para Agentes' : 'Crear Nueva Cuenta'}
         </h2>
-        <p className="text-slate-400 mb-8">Inicia sesión con tu cuenta de Google de la empresa.</p>
+        <p className="text-slate-400 mb-6 text-center">
+          {isLoginMode ? 'Introduce tus credenciales para continuar.' : 'Completa el formulario para registrarte.'}
+        </p>
         
-        <div className="space-y-4">
-            <Button 
-                onClick={handleGoogleSignIn} 
-                className="w-full !bg-white hover:!bg-slate-200 !text-slate-800"
-                disabled={isLoading}
-            >
-                <GoogleIcon className="w-5 h-5 mr-3" />
-                {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión con Google'}
-            </Button>
-            {error && <p className="text-red-400 text-sm pt-2">{error}</p>}
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLoginMode && (
+            <div className="relative">
+              <UserCircleIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nombre completo"
+                required
+                className="pl-10"
+                aria-label="Nombre completo"
+              />
+            </div>
+          )}
+          <div className="relative">
+            <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="correo@vidahome.es"
+              required
+              className="pl-10"
+              aria-label="Correo electrónico"
+            />
+          </div>
+          <div className="relative">
+            <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              required
+              className="pl-10"
+              aria-label="Contraseña"
+            />
+          </div>
 
-        <div className="mt-6 text-xs text-slate-500 space-y-1">
-            <p>Asegúrate de usar tu cuenta @vidahome.es.</p>
-            <p>Si la ventana no aparece, revisa que tu navegador no esté bloqueando las ventanas emergentes.</p>
+          {error && <p role="alert" className="text-red-400 text-sm text-center">{error}</p>}
+          
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Cargando...' : (isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta')}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center text-sm">
+          <span className="text-slate-400">
+            {isLoginMode ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? '}
+          </span>
+          <button onClick={toggleMode} className="font-semibold text-emerald-400 hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-800 rounded-sm">
+            {isLoginMode ? 'Regístrate' : 'Inicia Sesión'}
+          </button>
         </div>
 
       </Card>
