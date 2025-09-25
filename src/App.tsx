@@ -177,7 +177,7 @@ const defaultTemplates: { [key in Language]: Omit<MessageTemplate, 'id' | 'creat
         {
             title: "Mensagem pós-venda – agradecimento e opiniões",
             category: "Fidelização",
-            content: "🎉 Olá [nome],\nMuito obrigado por confiar na VidaHome na gestão da sua compra e venda 🏡.\n\nFoi um prazer acompanhá-lo/a durante todo o processo e ficamos felizes que tudo tenha corrido bem. Esperamos que esteja satisfeito/a com o nosso serviço e lembramos que estamos sempre disponíveis para o que precisar no futuro 🙌.\n\nSe quiser partilhar a sua experiência e ajudar-nos a mejorar, pode deixar a sua opinião aqui:\n⭐ Deixar opinião no Google\n\nCom os melhores cumprimentos,\n[agente_creador] – VidaHome",
+            content: "🎉 Olá [nome],\nMuito obrigado por confiar na VidaHome na gestão da sua compra e venda 🏡.\n\nFoi um prazer acompanhá-lo/a durante todo o processo e ficamos felizes que tudo tenha corrido bem. Esperamos que esteja satisfeito/a com o nosso serviço e lembramos que estamos sempre disponíveis para o que precisar no futuro 🙌.\n\nSe quiser partilhar a sua experiência e ajudar-nos a melhorar, pode deixar a sua opinião aqui:\n⭐ Deixar opinião no Google\n\nCom os melhores cumprimentos,\n[agente_creador] – VidaHome",
             imageUrl: null,
         },
         {
@@ -357,13 +357,13 @@ const defaultTemplates: { [key in Language]: Omit<MessageTemplate, 'id' | 'creat
         {
             title: "Подтверждение визита (без предварительного звонка)",
             category: "Сопровождение",
-            content: "👋 Здравствуйте [имя]\nМы подтверждаем просмотр недвижимости на [dia] в [hora], с нашим агентом [agente_nombre].\n\n📍 Адрес: [zona], [ciudad]\n📞 Агент: [agente_nombre] – [agente_tlf]\n\nВы можете подтвердить, изменить или отменить встречу по следующей ссылке:\n👉 [demanda]\n\n⚠️ Если ссылка не открывается, добавьте нас в контакты (VidaHome) или просто ответьте на это сообщение, и она заработает.\n\nС уважением,\n[agente_creador] – VidaHome 🏡",
+            content: "👋 Здравствуйте [имя]\nМы подтверждаем просмотр недвижимости на [dia] в [hora], с нашим агентом [agente_nombre].\n\n📍 Адрес: [zona], [ciudad]\n📞 Агент: [agente_nombre] – [agente_tlf]\n\nВы можете подтвердить, изменить или отменить встречу по следующей ссылке:\n👉 [demanda]\n\n⚠️ Если ссылка не открывается, добавьте нас в контакты (VidaHome) или просто ответьте на это сообщение, и она заработаet.\n\nС уважением,\n[agente_creador] – VidaHome 🏡",
             imageUrl: null,
         },
         {
             title: "Подтверждение визита (после телефонного разговора)",
             category: "Сопровождение",
-            content: "👋 Здравствуйте [имя]\nЯ [agente_creador] из агентства недвижимости VidaHome 🏡.\n\nКак мы договорились по телефону, подтверждаю просмотр недвижимости на [dia] в [hora].\n\n📍 Адрес: [zona], [ciudad]\n🔗 Google Maps: [demanda]\n\nВот ссылка с подробностями об объекте:\n👉 [ref]\n\nВы также можете подтвердить встречу по следующей ссылке:\n👉 [demanda]\n\n⚠️ Если ссылки не открываются, добавьте нас в контакты (VidaHome) или просто ответьте на это сообщение, и они заработают.\n\nС уважением,\n[agente_creador] – VidaHome",
+            content: "👋 Здравствуйте [имя]\nЯ [agente_creador] из агентства недвижимости VidaHome 🏡.\n\nКак мы договорились по телефону, подтверждаю просмотр недвижимости на [dia] в [hora].\n\n📍 Адрес: [zona], [ciudad]\n🔗 Google Maps: [demanda]\n\nВот ссылка с подробностями об объекте:\n👉 [ref]\n\nВы также можете подтвердить встречу по следующей ссылке:\n👉 [demanda]\n\n⚠️ Если ссылки не открываются, добавьте нас в контакты (VidaHome) или просто ответьte на это сообщение, и они заработают.\n\nС уважением,\n[agente_creador] – VidaHome",
             imageUrl: null,
         },
         {
@@ -660,7 +660,7 @@ const App: React.FC = () => {
     auth.signOut();
   };
 
-  // Admin handlers for editing profiles
+  // Admin handlers
   const handleOpenProfileEditor = (agent: Agent) => {
     setAgentToEdit(agent);
     setIsProfileModalOpen(true);
@@ -671,6 +671,61 @@ const App: React.FC = () => {
     await updateAgentProfile(agentToEdit.id, data);
     const updatedAgents = await fetchAllAgents(); // Refetch all agents
     setAgents(updatedAgents);
+  };
+  
+  const handleCreateAgent = async (data: { name: string, email: string, password: string }): Promise<string | null> => {
+    const { name, email, password } = data;
+    const requiredDomain = 'vidahome.es';
+    if (!email.endsWith('@' + requiredDomain)) {
+        return `El registro está restringido a cuentas de @${requiredDomain}.`;
+    }
+    if (!name.trim()) {
+      return 'El nombre es obligatorio.';
+    }
+
+    // Since creating a user automatically signs them in, we need to save the current admin's session.
+    const currentAdmin = auth.currentUser;
+
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      const user = userCredential.user;
+      if (user) {
+        await db.collection('usuarios').doc(user.uid).set({
+          nombre: name,
+          email: user.email,
+          telefono: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Re-authenticate the admin
+        if (currentAdmin) {
+            await auth.updateCurrentUser(currentAdmin);
+        }
+
+        alert('Agente creado con éxito. La sesión ha cambiado al nuevo usuario. Por favor, cierra sesión y vuelve a entrar con tu cuenta de administrador.');
+        
+        const updatedAgents = await fetchAllAgents();
+        setAgents(updatedAgents);
+        return null; // Indica éxito
+      }
+      return 'No se pudo crear el usuario.';
+    } catch (err: any) {
+      // Re-authenticate the admin in case of an error as well
+      if (currentAdmin) {
+        await auth.updateCurrentUser(currentAdmin);
+      }
+      console.error("Error creating agent:", err);
+      switch (err.code) {
+        case 'auth/email-already-in-use':
+          return 'Este correo electrónico ya está registrado.';
+        case 'auth/weak-password':
+          return 'La contraseña debe tener al menos 6 caracteres.';
+        case 'auth/invalid-email':
+          return 'El formato del correo electrónico no es válido.';
+        default:
+          return 'Ocurrió un error inesperado al crear el agente.';
+      }
+    }
   };
 
 
@@ -775,7 +830,11 @@ const App: React.FC = () => {
           </div>
           {isAdmin && (
               <div className="lg:col-span-5">
-                  <AdminPanel agents={agents} onEditAgent={handleOpenProfileEditor} />
+                  <AdminPanel 
+                    agents={agents} 
+                    onEditAgent={handleOpenProfileEditor} 
+                    onCreateAgent={handleCreateAgent}
+                  />
               </div>
           )}
         </main>
