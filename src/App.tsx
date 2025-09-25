@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { MessageTemplate, Recipient, Property, Agent } from './types';
 import TemplateManager from './components/TemplateManager';
@@ -386,7 +387,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
     try {
         const templatesCollection = db.collection('plantillas').where('language', '==', language);
         const templatesSnapshot = await templatesCollection.get();
-        const templatesList = templatesSnapshot.docs.map(doc => {
+        const templatesList = templatesSnapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -398,7 +399,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
                 language: String(data.language ?? 'es'),
             };
         });
-        templatesList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        templatesList.sort((a: MessageTemplate, b: MessageTemplate) => b.createdAt.getTime() - a.createdAt.getTime());
         return templatesList;
     } catch (error) {
         console.error("Error fetching templates:", error);
@@ -410,7 +411,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
     try {
         const recipientsCollection = db.collection('destinatarios');
         const recipientsSnapshot = await recipientsCollection.get();
-        const recipientsList = recipientsSnapshot.docs.map(doc => {
+        const recipientsList = recipientsSnapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -419,7 +420,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
                 createdAt: data.createdAt instanceof firebase.firestore.Timestamp ? data.createdAt.toDate() : new Date(),
             };
         });
-        recipientsList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        recipientsList.sort((a: Recipient, b: Recipient) => b.createdAt.getTime() - a.createdAt.getTime());
         return recipientsList;
     } catch (error) {
         console.error("Error fetching recipients:", error);

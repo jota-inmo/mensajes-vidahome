@@ -10,70 +10,79 @@ interface InmovillaClient {
 }
 
 export default async function handler(req: any, res: any) {
-    if (req.method !== 'GET') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
-    }
-
-    const { searchTerm } = req.query;
-    const CRM_API_KEY = process.env.CRM_API_KEY;
-    // The base URL should be set to "https://procesos.inmovilla.com/api/v1" in Vercel env vars
-    const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
-
-    if (!CRM_API_KEY || !CRM_API_BASE_URL) {
-        return res.status(500).json({ error: 'La configuración del CRM no está completa en el servidor.' });
-    }
-
-    if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.length < 2) {
-        return res.status(200).json([]);
-    }
-
-    let crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/`;
-    const params = new URLSearchParams();
-
-    // Determine if the search term is a phone number or an email.
-    if (searchTerm.includes('@')) {
-        params.append('email', searchTerm);
-    } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
-        params.append('telefono', searchTerm.replace(/\s/g, ''));
-    } else {
-        // The documented API endpoint doesn't support searching by name.
-        return res.status(200).json([]);
-    }
-    
-    crmApiUrl += `?${params.toString()}`;
-
     try {
+        if (req.method !== 'GET') {
+            return res.status(405).json({ error: 'Method Not Allowed' });
+        }
+
+        console.log("SEARCH-CLIENTS: Function started.");
+
+        const { searchTerm } = req.query;
+        console.log(`SEARCH-CLIENTS: Received searchTerm: "${searchTerm}"`);
+        
+        const CRM_API_KEY = process.env.CRM_API_KEY;
+        const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
+
+        if (!CRM_API_KEY || !CRM_API_BASE_URL) {
+            console.error("SEARCH-CLIENTS: Missing CRM environment variables.");
+            return res.status(500).json({ error: 'La configuración del CRM no está completa en el servidor.' });
+        }
+        
+        console.log("SEARCH-CLIENTS: CRM environment variables are present.");
+
+        if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.length < 2) {
+            console.log("SEARCH-CLIENTS: Search term is too short, returning empty array.");
+            return res.status(200).json([]);
+        }
+
+        let crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/`;
+        const params = new URLSearchParams();
+
+        if (searchTerm.includes('@')) {
+            params.append('email', searchTerm);
+        } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
+            params.append('telefono', searchTerm.replace(/\s/g, ''));
+        } else {
+            console.log("SEARCH-CLIENTS: Search term is not email or phone, returning empty array.");
+            return res.status(200).json([]);
+        }
+        
+        crmApiUrl += `?${params.toString()}`;
+        console.log(`SEARCH-CLIENTS: Fetching from CRM URL: ${crmApiUrl}`);
+
         const crmResponse = await fetch(crmApiUrl, {
             headers: {
-                'Token': CRM_API_KEY, // CORRECTED: Use 'Token' header as per documentation
+                'Token': CRM_API_KEY,
                 'Content-Type': 'application/json'
             }
         });
+        
+        console.log(`SEARCH-CLIENTS: CRM response status: ${crmResponse.status}`);
 
         if (crmResponse.status === 404) {
+            console.log("SEARCH-CLIENTS: CRM returned 404, returning empty array.");
             return res.status(200).json([]);
         }
 
         if (!crmResponse.ok) {
             const errorText = await crmResponse.text();
-            console.error(`Error del CRM: ${crmResponse.status} ${crmResponse.statusText}`, errorText);
+            console.error(`SEARCH-CLIENTS: CRM returned non-OK status. Status: ${crmResponse.status}. Body: ${errorText}`);
             return res.status(crmResponse.status).json({ error: 'Error al comunicarse con el CRM.' });
         }
 
-        // Handle cases where API might return a single object or an array
         const data: InmovillaClient[] | InmovillaClient = await crmResponse.json();
         const dataArray = Array.isArray(data) ? data : [data];
         
-        // Adapt the Inmovilla API response to the format the frontend expects (Client type)
         const adaptedClients = dataArray.map(c => ({
             name: `${c.nombre || ''} ${c.apellidos || ''}`.trim(),
             phone: c.telefono1 || c.telefono2 || '',
         }));
         
+        console.log(`SEARCH-CLIENTS: Successfully adapted ${adaptedClients.length} clients. Sending response.`);
         res.status(200).json(adaptedClients);
 
-    } catch (error) {
-        console.error('Error al hacer fetch a la API de clientes del CRM:', error);
+    } catch (error: any) {
+        console.error('SEARCH-CLIENTS: Unhandled error in handler:', error.message, error.stack);
         res.status(500).json({ error: 'Error interno del servidor al buscar clientes.' });
     }
 }
