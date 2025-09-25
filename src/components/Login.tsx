@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { auth } from '../services/firebase';
 import { Card } from './ui/Card';
@@ -12,6 +11,8 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const getErrorMessage = (code: string): string => {
     switch (code) {
@@ -30,6 +31,8 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setResetMessage(null);
+    setResetError(null);
     setIsLoading(true);
 
     try {
@@ -41,6 +44,32 @@ const Login: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const handlePasswordReset = async () => {
+    setError(null);
+    setResetError(null);
+    setResetMessage(null);
+
+    if (!email) {
+      setResetError("Por favor, introduce tu correo para restablecer la contraseña.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await auth.sendPasswordResetEmail(email);
+      setResetMessage("Correo de restablecimiento enviado. Revisa tu bandeja de entrada.");
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        setResetError("No se encontró ningún usuario con ese correo electrónico.");
+      } else {
+        setResetError("Ocurrió un error al intentar enviar el correo.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="bg-slate-900 min-h-screen flex flex-col items-center justify-center p-4">
@@ -85,11 +114,23 @@ const Login: React.FC = () => {
           </div>
 
           {error && <p role="alert" className="text-red-400 text-sm text-center">{error}</p>}
+          {resetError && <p role="alert" className="text-red-400 text-sm text-center">{resetError}</p>}
+          {resetMessage && <p role="status" className="text-green-400 text-sm text-center">{resetMessage}</p>}
           
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {isLoading ? 'Cargando...' : 'Iniciar Sesión'}
           </Button>
         </form>
+        <div className="mt-4 text-center">
+            <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isLoading}
+                className="text-sm text-emerald-400 hover:text-emerald-300 hover:underline focus:outline-none disabled:opacity-50"
+            >
+                ¿Has olvidado tu contraseña?
+            </button>
+        </div>
       </Card>
     </div>
   );

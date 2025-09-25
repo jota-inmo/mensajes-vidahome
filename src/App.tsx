@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { MessageTemplate, Recipient, Property, Agent } from './types';
 import TemplateManager from './components/TemplateManager';
@@ -26,6 +25,7 @@ type Language = 'es' | 'en' | 'fr' | 'it' | 'pt' | 'de' | 'ro' | 'pl' | 'nl' | '
 
 const ADMIN_EMAIL = 'jc@vidahome.es';
 
+// FIX: Added missing imageUrl property to all default templates to match the MessageTemplate type.
 const defaultTemplates: { [key in Language]: Omit<MessageTemplate, 'id' | 'createdAt' | 'language'>[] } = {
     es: [
         {
@@ -386,7 +386,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
     try {
         const templatesCollection = db.collection('plantillas').where('language', '==', language);
         const templatesSnapshot = await templatesCollection.get();
-        const templatesList = templatesSnapshot.docs.map((doc: any) => {
+        const templatesList = templatesSnapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -398,7 +398,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
                 language: String(data.language ?? 'es'),
             };
         });
-        templatesList.sort((a: MessageTemplate, b: MessageTemplate) => b.createdAt.getTime() - a.createdAt.getTime());
+        templatesList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         return templatesList;
     } catch (error) {
         console.error("Error fetching templates:", error);
@@ -410,7 +410,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
     try {
         const recipientsCollection = db.collection('destinatarios');
         const recipientsSnapshot = await recipientsCollection.get();
-        const recipientsList = recipientsSnapshot.docs.map((doc: any) => {
+        const recipientsList = recipientsSnapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -419,7 +419,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
                 createdAt: data.createdAt instanceof firebase.firestore.Timestamp ? data.createdAt.toDate() : new Date(),
             };
         });
-        recipientsList.sort((a: Recipient, b: Recipient) => b.createdAt.getTime() - a.createdAt.getTime());
+        recipientsList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         return recipientsList;
     } catch (error) {
         console.error("Error fetching recipients:", error);
@@ -660,7 +660,7 @@ const App: React.FC = () => {
     auth.signOut();
   };
 
-  // Admin handlers
+  // Admin handlers for editing profiles
   const handleOpenProfileEditor = (agent: Agent) => {
     setAgentToEdit(agent);
     setIsProfileModalOpen(true);
@@ -671,61 +671,6 @@ const App: React.FC = () => {
     await updateAgentProfile(agentToEdit.id, data);
     const updatedAgents = await fetchAllAgents(); // Refetch all agents
     setAgents(updatedAgents);
-  };
-  
-  const handleCreateAgent = async (data: { name: string, email: string, password: string }): Promise<string | null> => {
-    const { name, email, password } = data;
-    const requiredDomain = 'vidahome.es';
-    if (!email.endsWith('@' + requiredDomain)) {
-        return `El registro está restringido a cuentas de @${requiredDomain}.`;
-    }
-    if (!name.trim()) {
-      return 'El nombre es obligatorio.';
-    }
-
-    // Since creating a user automatically signs them in, we need to save the current admin's session.
-    const currentAdmin = auth.currentUser;
-
-    try {
-      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-      const user = userCredential.user;
-      if (user) {
-        await db.collection('usuarios').doc(user.uid).set({
-          nombre: name,
-          email: user.email,
-          telefono: '',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // Re-authenticate the admin
-        if (currentAdmin) {
-            await auth.updateCurrentUser(currentAdmin);
-        }
-
-        alert('Agente creado con éxito. La sesión ha cambiado al nuevo usuario. Por favor, cierra sesión y vuelve a entrar con tu cuenta de administrador.');
-        
-        const updatedAgents = await fetchAllAgents();
-        setAgents(updatedAgents);
-        return null; // Indica éxito
-      }
-      return 'No se pudo crear el usuario.';
-    } catch (err: any) {
-      // Re-authenticate the admin in case of an error as well
-      if (currentAdmin) {
-        await auth.updateCurrentUser(currentAdmin);
-      }
-      console.error("Error creating agent:", err);
-      switch (err.code) {
-        case 'auth/email-already-in-use':
-          return 'Este correo electrónico ya está registrado.';
-        case 'auth/weak-password':
-          return 'La contraseña debe tener al menos 6 caracteres.';
-        case 'auth/invalid-email':
-          return 'El formato del correo electrónico no es válido.';
-        default:
-          return 'Ocurrió un error inesperado al crear el agente.';
-      }
-    }
   };
 
 
@@ -830,11 +775,7 @@ const App: React.FC = () => {
           </div>
           {isAdmin && (
               <div className="lg:col-span-5">
-                  <AdminPanel 
-                    agents={agents} 
-                    onEditAgent={handleOpenProfileEditor} 
-                    onCreateAgent={handleCreateAgent}
-                  />
+                  <AdminPanel agents={agents} onEditAgent={handleOpenProfileEditor} />
               </div>
           )}
         </main>
@@ -850,4 +791,5 @@ const App: React.FC = () => {
   );
 };
 
+// FIX: Added missing default export for the App component.
 export default App;
