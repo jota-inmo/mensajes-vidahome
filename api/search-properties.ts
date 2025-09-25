@@ -5,8 +5,6 @@ interface InmovillaProperty {
     cod_ofer: number;
     ref: string;
     calle?: string;
-    // These fields are not directly in the GET response but might be inferred or from other endpoints.
-    // We keep the logic from before for a richer UI, but it will handle missing fields gracefully.
     tipo_inmueble_text?: string; 
     zona_text?: string;
     poblacion_text?: string;
@@ -35,22 +33,19 @@ export default async function handler(req: any, res: any) {
         console.log("SEARCH-PROPERTIES: CRM environment variables are present.");
 
         const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
-
-        if (!query) {
-            console.log("SEARCH-PROPERTIES: Search term is empty, returning empty array.");
-            return res.status(200).json([]);
-        }
-
         let crmApiUrl = `${CRM_API_BASE_URL}/propiedades/`;
-        const params = new URLSearchParams();
 
-        // If it's all digits, assume it's cod_ofer. Otherwise, assume ref.
-        if (/^\d+$/.test(query)) {
-            params.append('cod_ofer', query);
-        } else {
-            params.append('ref', query);
+        if (query) {
+            const params = new URLSearchParams();
+            // If it's all digits, assume it's cod_ofer. Otherwise, assume ref.
+            if (/^\d+$/.test(query)) {
+                params.append('cod_ofer', query);
+            } else {
+                params.append('ref', query);
+            }
+            crmApiUrl += `?${params.toString()}`;
         }
-        crmApiUrl += `?${params.toString()}`;
+        
         console.log(`SEARCH-PROPERTIES: Fetching from CRM URL: ${crmApiUrl}`);
 
         const crmResponse = await fetch(crmApiUrl, {
@@ -73,25 +68,29 @@ export default async function handler(req: any, res: any) {
             return res.status(crmResponse.status).json({ error: 'Error al comunicarse con el CRM.' });
         }
 
-        const data: InmovillaProperty = await crmResponse.json();
+        const data = await crmResponse.json();
         
-        // Adapt the Inmovilla API response to the format the frontend expects (Property type)
-        const title = data.tipo_inmueble_text 
-            ? `${data.tipo_inmueble_text} en ${data.zona_text || data.poblacion_text || data.calle || 'ubicación desconocida'}`
-            : `Propiedad en ${data.calle || data.zona_text || data.poblacion_text || 'ubicación desconocida'}`;
+        // The API might return a single object (for specific search) or an array of objects (for general list)
+        const propertiesArray: InmovillaProperty[] = Array.isArray(data) ? data : (data ? [data] : []);
 
-        const adaptedProperty = {
-            id: String(data.cod_ofer),
-            ref: data.ref,
-            title: title.replace(/ en ubicación desconocida$/, ''), // Clean up if no location found
-            zone: data.zona_text || data.calle || '',
-            city: data.poblacion_text || '',
-            link: `https://www.vidahome.es/inmuebles/${data.ref}`,
-            imageUrl: data.fotos && data.fotos.length > 0 ? data.fotos[0].url_250 : undefined,
-        };
+        const adaptedProperties = propertiesArray.map(p => {
+            const title = p.tipo_inmueble_text 
+                ? `${p.tipo_inmueble_text} en ${p.zona_text || p.poblacion_text || p.calle || 'ubicación desconocida'}`
+                : `Propiedad en ${p.calle || p.zona_text || p.poblacion_text || 'ubicación desconocida'}`;
+
+            return {
+                id: String(p.cod_ofer),
+                ref: p.ref,
+                title: title.replace(/ en ubicación desconocida$/, ''), // Clean up if no location found
+                zone: p.zona_text || p.calle || '',
+                city: p.poblacion_text || '',
+                link: `https://www.vidahome.es/inmuebles/${p.ref}`,
+                imageUrl: p.fotos && p.fotos.length > 0 ? p.fotos[0].url_250 : undefined,
+            };
+        });
         
-        console.log("SEARCH-PROPERTIES: Successfully adapted property. Sending response.");
-        res.status(200).json([adaptedProperty]);
+        console.log(`SEARCH-PROPERTIES: Successfully adapted ${adaptedProperties.length} properties. Sending response.`);
+        res.status(200).json(adaptedProperties);
 
     } catch (error: any) {
         console.error('SEARCH-PROPERTIES: Unhandled error in handler:', error.message, error.stack);

@@ -18,25 +18,18 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
   stepNumber,
 }) => {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // A specific lookup doesn't need a loading state in the same way, but good for debounce
-    setIsLoading(true); 
-    // Debounce the search to avoid excessive API calls
+    setIsLoading(true);
+    // Debounce to avoid excessive API calls
     const handler = setTimeout(() => {
-      // Don't search if the term is too short or empty
-      if (searchTerm.trim() === '') {
-        setProperties([]);
-        setIsLoading(false);
-        return;
-      }
       fetchProperties(searchTerm).then(fetchedProperties => {
         setProperties(fetchedProperties);
         setIsLoading(false);
       });
-    }, 500);
+    }, 500); // Use debounce for both initial load and search
 
     return () => {
       clearTimeout(handler);
@@ -59,16 +52,16 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
       </div>
       
       <Input
-        placeholder="Buscar por referencia o código..."
+        placeholder="Buscar por referencia o ver recientes..."
         className="mb-4"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        aria-label="Buscar propiedad por referencia o código"
+        aria-label="Buscar propiedad por referencia"
       />
 
       <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-        {isLoading && searchTerm.trim() ? (
-            <p className="text-slate-500 text-center py-4">Buscando propiedad...</p>
+        {isLoading ? (
+            <p className="text-slate-500 text-center py-4">{searchTerm ? 'Buscando propiedades...' : 'Cargando propiedades recientes...'}</p>
         ) : properties.length > 0 ? (
           properties.map((property) => (
             <div
@@ -96,7 +89,7 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
             </div>
           ))
         ) : (
-          searchTerm.trim() && <p className="text-slate-500 text-center py-4">No se encontró la propiedad.</p>
+          <p className="text-slate-500 text-center py-4">{searchTerm ? 'No se encontraron propiedades.' : 'No hay propiedades recientes para mostrar.'}</p>
         )}
       </div>
     </Card>
