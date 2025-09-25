@@ -1,0 +1,5 @@
+{
+  "name": "Centro de Mensajes de WhatsApp",
+  "description": "Una aplicación para crear, almacenar y enviar rápidamente mensajes de presentación predefinidos a través de WhatsApp para diversas situaciones, con generación de plantillas impulsada por IA.",
+  "requestFramePermissions": []
+}
