@@ -43,8 +43,10 @@ export default async function handler(req: any, res: any) {
         } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
             params.append('telefono', searchTerm.replace(/\s/g, ''));
         } else {
-            // If it's not an email or a phone number, assume it's a name
-            params.append('nombre', searchTerm);
+            // Searching by name is not supported by the /clientes/buscar/ endpoint.
+            // Return empty results immediately if it's not an email or phone.
+            console.log("SEARCH-CLIENTS: Search term is not an email or phone, returning empty array.");
+            return res.status(200).json([]);
         }
         
         crmApiUrl += `?${params.toString()}`;

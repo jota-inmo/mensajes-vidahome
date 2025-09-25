@@ -100,7 +100,7 @@ const RecipientManager: React.FC<RecipientManagerProps> = ({
           <label htmlFor="search-client" className="block text-sm font-medium text-slate-400 mb-1">Buscar Cliente en CRM</label>
           <Input 
             id="search-client"
-            placeholder="Buscar por nombre, teléfono o email..."
+            placeholder="Buscar por teléfono o email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

@@ -33,17 +33,20 @@ export default async function handler(req: any, res: any) {
         console.log("SEARCH-PROPERTIES: CRM environment variables are present.");
 
         const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
-        let crmApiUrl = `${CRM_API_BASE_URL}/propiedades/`;
+        let crmApiUrl;
 
         if (query) {
+            // Search for a specific property by ref or cod_ofer
             const params = new URLSearchParams();
-            // If it's all digits, assume it's cod_ofer. Otherwise, assume ref.
             if (/^\d+$/.test(query)) {
                 params.append('cod_ofer', query);
             } else {
                 params.append('ref', query);
             }
-            crmApiUrl += `?${params.toString()}`;
+            crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?${params.toString()}`;
+        } else {
+            // If no search term, fetch the list of properties
+            crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?listado`;
         }
         
         console.log(`SEARCH-PROPERTIES: Fetching from CRM URL: ${crmApiUrl}`);
