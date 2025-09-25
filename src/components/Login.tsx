@@ -41,15 +41,25 @@ const Login: React.FC = () => {
       } else {
         // Si el usuario logró iniciar sesión con otra cuenta, lo deslogueamos
         await auth.signOut();
-        setError(`Acceso restringido. Solo se permiten cuentas de @${requiredDomain}.`);
+        setError(`Acceso restringido. Utiliza una cuenta de @${requiredDomain}.`);
       }
     } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('El inicio de sesión fue cancelado.');
-      } else {
-        setError('Ocurrió un error al iniciar sesión. Por favor, inténtalo de nuevo.');
+      // Gestión de errores mejorada
+      switch (err.code) {
+        case 'auth/popup-closed-by-user':
+        case 'auth/cancelled-popup-request':
+          // El usuario cerró la ventana, no es necesario mostrar un error.
+          break;
+        case 'auth/popup-blocked-by-browser':
+          setError('El navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio.');
+          break;
+        case 'auth/unauthorized-domain':
+            setError('Este dominio no está autorizado para iniciar sesión. Contacta al administrador.');
+            break;
+        default:
+          setError('Ocurrió un error al iniciar sesión. Por favor, inténtalo de nuevo.');
+          console.error("Error de inicio de sesión:", err);
       }
-      console.error(err);
     } finally {
         setIsLoading(false);
     }
@@ -77,6 +87,11 @@ const Login: React.FC = () => {
                 {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión con Google'}
             </Button>
             {error && <p className="text-red-400 text-sm pt-2">{error}</p>}
+        </div>
+
+        <div className="mt-6 text-xs text-slate-500 space-y-1">
+            <p>Asegúrate de usar tu cuenta @vidahome.es.</p>
+            <p>Si la ventana no aparece, revisa que tu navegador no esté bloqueando las ventanas emergentes.</p>
         </div>
 
       </Card>
