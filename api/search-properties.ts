@@ -27,8 +27,9 @@ export default async function handler(req: any, res: any) {
     
     const query = typeof searchTerm === 'string' ? searchTerm : '';
 
-    // Correct endpoint for Apinmo API
-    const crmApiUrl = `${CRM_API_BASE_URL}/inmuebles?q=${encodeURIComponent(query)}`;
+    // FIX: Apinmo API requires a specific field for searching, not a generic 'q'.
+    // Using 'referencia' for reference-based search.
+    const crmApiUrl = `${CRM_API_BASE_URL}/inmuebles?referencia=${encodeURIComponent(query)}`;
 
     try {
         const crmResponse = await fetch(crmApiUrl, {

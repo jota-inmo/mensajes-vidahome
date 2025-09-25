@@ -27,8 +27,9 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json([]);
     }
 
-    // Correct endpoint for Apinmo API
-    const crmApiUrl = `${CRM_API_BASE_URL}/contactos?q=${encodeURIComponent(searchTerm)}`;
+    // FIX: Apinmo API requires a specific field for searching, not a generic 'q'.
+    // Using 'nombre' to search by client name.
+    const crmApiUrl = `${CRM_API_BASE_URL}/contactos?nombre=${encodeURIComponent(searchTerm)}`;
 
     try {
         const crmResponse = await fetch(crmApiUrl, {

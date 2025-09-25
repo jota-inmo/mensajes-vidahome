@@ -428,13 +428,11 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
 };
 
 const App: React.FC = () => {
-  // FIX: Replaced firebase.User with any to resolve typing issue with global Firebase script.
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // Admin state for editing other agents
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [agentToEdit, setAgentToEdit] = useState<Agent | null>(null);
 
@@ -453,7 +451,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // FIX: Replaced firebase.User with any to resolve typing issue with global Firebase script.
     const unsubscribe = auth.onAuthStateChanged(async (user: any | null) => {
         setCurrentUser(user);
         if (user) {
@@ -660,7 +657,6 @@ const App: React.FC = () => {
     auth.signOut();
   };
 
-  // Admin handlers for editing profiles
   const handleOpenProfileEditor = (agent: Agent) => {
     setAgentToEdit(agent);
     setIsProfileModalOpen(true);
@@ -669,10 +665,42 @@ const App: React.FC = () => {
   const handleProfileUpdate = async (data: { name: string, phone: string }) => {
     if (!agentToEdit) return;
     await updateAgentProfile(agentToEdit.id, data);
-    const updatedAgents = await fetchAllAgents(); // Refetch all agents
+    const updatedAgents = await fetchAllAgents();
     setAgents(updatedAgents);
   };
 
+  const handleCreateAgent = async (data: { name: string, email: string, password: string }): Promise<string | null> => {
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(data.email, data.password);
+      const user = userCredential.user;
+
+      if (user) {
+        await user.updateProfile({ displayName: data.name });
+        await db.collection('usuarios').doc(user.uid).set({
+          nombre: data.name,
+          email: data.email,
+          telefono: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      const updatedAgents = await fetchAllAgents();
+      setAgents(updatedAgents);
+      return null;
+    } catch (error: any) {
+      console.error("Error creating agent:", error);
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          return 'Este correo electrónico ya está registrado.';
+        case 'auth/invalid-email':
+          return 'El formato del correo electrónico no es válido.';
+        case 'auth/weak-password':
+          return 'La contraseña es demasiado débil (mín. 6 caracteres).';
+        default:
+          return 'Ocurrió un error inesperado al crear el agente.';
+      }
+    }
+  };
 
   if (authLoading) {
     return (
@@ -775,7 +803,11 @@ const App: React.FC = () => {
           </div>
           {isAdmin && (
               <div className="lg:col-span-5">
-                  <AdminPanel agents={agents} onEditAgent={handleOpenProfileEditor} />
+                  <AdminPanel 
+                    agents={agents} 
+                    onEditAgent={handleOpenProfileEditor}
+                    onCreateAgent={handleCreateAgent}
+                  />
               </div>
           )}
         </main>
@@ -791,5 +823,4 @@ const App: React.FC = () => {
   );
 };
 
-// FIX: Added missing default export for the App component.
 export default App;
