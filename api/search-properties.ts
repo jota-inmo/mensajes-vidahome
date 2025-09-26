@@ -35,6 +35,11 @@ export default async function handler(req: any, res: any) {
         const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         let crmApiUrl;
 
+        // FIX: Added a trailing slash to the endpoint path (`/propiedades/`) for consistency
+        // with other endpoints like `/clientes/` and `/enums/`. The original documentation's
+        // GET example for properties was likely a typo.
+        const endpointPath = `${CRM_API_BASE_URL}/propiedades/`;
+
         if (query) {
             // Search for a specific property by ref or cod_ofer
             const params = new URLSearchParams();
@@ -43,12 +48,10 @@ export default async function handler(req: any, res: any) {
             } else {
                 params.append('ref', query);
             }
-            // FIX: Added a trailing slash before the query parameters as required by the API documentation.
-            crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?${params.toString()}`;
+            crmApiUrl = `${endpointPath}?${params.toString()}`;
         } else {
             // If no search term, fetch the list of properties
-            // FIX: Added a trailing slash before the query parameters as required by the API documentation.
-            crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?listado`;
+            crmApiUrl = `${endpointPath}?listado`;
         }
         
         console.log(`SEARCH-PROPERTIES: Fetching from CRM URL: ${crmApiUrl}`);

@@ -6,7 +6,7 @@ interface InmovillaClient {
     apellidos: string;
     telefono1: string;
     telefono2: string;
-    // Other fields can be added here if needed
+    email?: string;
 }
 
 export default async function handler(req: any, res: any) {
@@ -35,27 +35,29 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json([]);
         }
 
-        const params = new URLSearchParams();
+        const searchBody: { [key: string]: string } = {};
 
         if (searchTerm.includes('@')) {
-            params.append('email', searchTerm);
+            searchBody.email = searchTerm;
         } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
-            params.append('telefono', searchTerm.replace(/\s/g, ''));
+            searchBody.telefono1 = searchTerm.replace(/\s/g, '');
         } else {
-            // As per documentation, searching by name is not supported by this endpoint.
-            console.log("SEARCH-CLIENTS: Search term is not an email or phone, returning empty array.");
             return res.status(200).json([]);
         }
         
-        // FIX: Removed `/buscar` from the URL to match the likely API structure, based on other endpoints.
-        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/?${params.toString()}`;
-        console.log(`SEARCH-CLIENTS: Fetching from CRM URL: ${crmApiUrl}`);
+        // FIX: Based on persistent issues with GET, switching to a POST request for searching.
+        // This is an unconventional API design, but it's the most likely solution.
+        // We add "?listado" to potentially signal a search/list operation instead of creation.
+        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/?listado`;
+        console.log(`SEARCH-CLIENTS: POSTing to CRM URL: ${crmApiUrl} with body:`, JSON.stringify(searchBody));
 
         const crmResponse = await fetch(crmApiUrl, {
+            method: 'POST',
             headers: {
                 'Token': CRM_API_KEY,
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify(searchBody)
         });
         
         console.log(`SEARCH-CLIENTS: CRM response status: ${crmResponse.status}`);
