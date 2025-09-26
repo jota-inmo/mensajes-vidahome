@@ -26,7 +26,6 @@ type Language = 'es' | 'en' | 'fr' | 'it' | 'pt' | 'de' | 'ro' | 'pl' | 'nl' | '
 
 const ADMIN_EMAIL = 'jc@vidahome.es';
 
-// FIX: Added missing imageUrl property to all default templates to match the MessageTemplate type.
 const defaultTemplates: { [key in Language]: Omit<MessageTemplate, 'id' | 'createdAt' | 'language'>[] } = {
     es: [
         {
@@ -172,7 +171,7 @@ const defaultTemplates: { [key in Language]: Omit<MessageTemplate, 'id' | 'creat
         {
             title: "Confirmação de visita (após chamada telefónica)",
             category: "Acompanhamento",
-            content: "👋 Olá [nome]\nSou [agente_creador], da agência imobiliária VidaHome 🏡.\n\nConforme combinado na nossa chamada telefónica, confirmo a visita da propriedade para o dia [dia] às [hora].\n\n📍 Morada: [zona], [ciudad]\n🔗 Localização Google Maps: [demanda]\n\nAqui está o link com os detalhes da propriedade:\n👉 [ref]\n\nTambém pode confirmar a visita através do seguinte link:\n👉 [demanda]\n\n⚠️ Se não conseguir abrir os links, guarde-nos como contacto (VidaHome) ou responda a esta mensagem e poderá aceder sem problema.\n\nCom os melhores cumprimentos,\n[agente_creador] – VidaHome",
+            content: "👋 Olá [nome]\nSou [agente_creador], da agência imobiliária VidaHome 🏡.\n\nConforme combinado na nossa chamada telefónica, confirmo a visita da propriedade para o dia [dia] às [hora].\n\n📍 Morada: [zona], [ciudad]\n🔗 Localização Google Maps: [demanda]\n\nAqui está o link com os detalhes da propriedade:\n👉 [ref]\n\nTambém pode confirmar la visita através do seguinte link:\n👉 [demanda]\n\n⚠️ Se não conseguir abrir os links, guarde-nos como contacto (VidaHome) ou responda a esta mensagem e poderá aceder sem problema.\n\nCom os melhores cumprimentos,\n[agente_creador] – VidaHome",
             imageUrl: null,
         },
         {
