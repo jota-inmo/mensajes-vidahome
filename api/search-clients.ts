@@ -11,6 +11,7 @@ interface InmovillaClient {
 
 export default async function handler(req: any, res: any) {
     try {
+        // FIX: The Inmovilla API requires a GET request with query parameters for searching.
         if (req.method !== 'GET') {
             return res.status(405).json({ error: 'Method Not Allowed' });
         }
@@ -35,29 +36,31 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json([]);
         }
 
-        const searchBody: { [key: string]: string } = {};
+        // FIX: Construct query parameters for the GET request.
+        const params = new URLSearchParams();
+        const cleanedSearchTerm = searchTerm.trim();
 
-        if (searchTerm.includes('@')) {
-            searchBody.email = searchTerm;
-        } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
-            searchBody.telefono1 = searchTerm.replace(/\s/g, '');
+        if (cleanedSearchTerm.includes('@')) {
+            params.append('email', cleanedSearchTerm);
+        } else if (/^[0-9+\-()\s]+$/.test(cleanedSearchTerm)) {
+             // FIX: The API documentation specifies 'telefono' as the query parameter for phone number search.
+            params.append('telefono', cleanedSearchTerm.replace(/\s/g, ''));
         } else {
+            // If the search term is not an email or a phone-like string, it's not a valid search for a client.
             return res.status(200).json([]);
         }
         
-        // FIX: Based on persistent issues with GET, switching to a POST request for searching.
-        // This is an unconventional API design, but it's the most likely solution.
-        // We add "?listado" to potentially signal a search/list operation instead of creation.
-        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/?listado`;
-        console.log(`SEARCH-CLIENTS: POSTing to CRM URL: ${crmApiUrl} with body:`, JSON.stringify(searchBody));
+        // FIX: The correct endpoint for searching clients is `/clientes/buscar/`.
+        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/?${params.toString()}`;
+        console.log(`SEARCH-CLIENTS: GETting from CRM URL: ${crmApiUrl}`);
 
         const crmResponse = await fetch(crmApiUrl, {
-            method: 'POST',
+            method: 'GET',
             headers: {
+                // FIX: Ensure the 'Token' header is used for authentication.
                 'Token': CRM_API_KEY,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(searchBody)
         });
         
         console.log(`SEARCH-CLIENTS: CRM response status: ${crmResponse.status}`);
@@ -74,6 +77,7 @@ export default async function handler(req: any, res: any) {
         }
 
         const data: InmovillaClient[] | InmovillaClient = await crmResponse.json();
+        // The API might return a single object or an array. Standardize to an array.
         const dataArray = Array.isArray(data) ? data : (data ? [data] : []);
         
         const adaptedClients = dataArray.map(c => ({

@@ -33,26 +33,22 @@ export default async function handler(req: any, res: any) {
         console.log("SEARCH-PROPERTIES: CRM environment variables are present.");
 
         const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
-        let crmApiUrl;
-
-        // FIX: Added a trailing slash to the endpoint path (`/propiedades/`) for consistency
-        // with other endpoints like `/clientes/` and `/enums/`. The original documentation's
-        // GET example for properties was likely a typo.
+        
+        // FIX: Consistently use `/propiedades/` endpoint.
         const endpointPath = `${CRM_API_BASE_URL}/propiedades/`;
+        const params = new URLSearchParams();
 
         if (query) {
             // Search for a specific property by ref or cod_ofer
-            const params = new URLSearchParams();
             if (/^\d+$/.test(query)) {
                 params.append('cod_ofer', query);
             } else {
                 params.append('ref', query);
             }
-            crmApiUrl = `${endpointPath}?${params.toString()}`;
-        } else {
-            // If no search term, fetch the list of properties
-            crmApiUrl = `${endpointPath}?listado`;
         }
+        
+        // FIX: Construct URL with query parameters. An empty search term will fetch the list by calling `/propiedades/?`.
+        const crmApiUrl = `${endpointPath}?${params.toString()}`;
         
         console.log(`SEARCH-PROPERTIES: Fetching from CRM URL: ${crmApiUrl}`);
 
