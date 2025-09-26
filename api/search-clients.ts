@@ -47,8 +47,8 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json([]);
         }
         
-        // FIX: Added a trailing slash before the query parameters as required by the API documentation.
-        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/?${params.toString()}`;
+        // FIX: Removed `/buscar` from the URL to match the likely API structure, based on other endpoints.
+        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/?${params.toString()}`;
         console.log(`SEARCH-CLIENTS: Fetching from CRM URL: ${crmApiUrl}`);
 
         const crmResponse = await fetch(crmApiUrl, {
