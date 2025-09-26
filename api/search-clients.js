@@ -18,11 +18,8 @@ export default async function handler(req, res) {
     if (req.method !== 'GET') {
       return res.status(405).json({ error: 'Method Not Allowed' });
     }
-
-    console.log("SEARCH-CLIENTS: Function started.");
     
     const { searchTerm } = req.query;
-    console.log(`SEARCH-CLIENTS: Received searchTerm: "${searchTerm}"`);
 
     const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL?.replace(/\/$/, '');
     const CRM_API_KEY = process.env.CRM_API_KEY;
@@ -31,10 +28,8 @@ export default async function handler(req, res) {
       console.error("SEARCH-CLIENTS: Missing CRM environment variables.");
       return res.status(500).json({ error: 'La configuración del CRM no está completa en el servidor.' });
     }
-    console.log("SEARCH-CLIENTS: CRM environment variables are present.");
 
     if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.length < 2) {
-      console.log("SEARCH-CLIENTS: Search term is too short, returning empty array.");
       return res.status(200).json([]);
     }
 
@@ -42,12 +37,14 @@ export default async function handler(req, res) {
     const params = new URLSearchParams();
     const cleanedSearchTerm = searchTerm.trim();
 
+    // Determinar si el término de búsqueda es un email, un teléfono o un nombre
     if (cleanedSearchTerm.includes('@')) {
       params.append('email', cleanedSearchTerm);
     } else if (/^[0-9+\-()\s]+$/.test(cleanedSearchTerm)) {
       params.append('telefono', cleanedSearchTerm.replace(/\s/g, ''));
     } else {
-      return res.status(200).json([]);
+      // Si no es un email ni un teléfono, asumimos que es un nombre
+      params.append('nombre', cleanedSearchTerm);
     }
 
     const crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/?${params.toString()}`;
@@ -56,14 +53,12 @@ export default async function handler(req, res) {
     const crmResponse = await fetch(crmApiUrl, {
       method: 'GET',
       headers: {
-        'Token': CRM_API_KEY,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Token': CRM_API_KEY
       },
     });
-    console.log(`SEARCH-CLIENTS: CRM response status: ${crmResponse.status}`);
 
     if (crmResponse.status === 404) {
-      console.log("SEARCH-CLIENTS: CRM returned 404, returning empty array.");
       return res.status(200).json([]);
     }
 
@@ -81,7 +76,6 @@ export default async function handler(req, res) {
       phone: c.telefono1 || c.telefono2 || '',
     }));
     
-    console.log(`SEARCH-CLIENTS: Successfully adapted ${adaptedClients.length} clients. Sending response.`);
     res.status(200).json(adaptedClients);
 
   } catch (error) {

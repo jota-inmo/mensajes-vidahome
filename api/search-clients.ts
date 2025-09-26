@@ -44,23 +44,21 @@ export default async function handler(req: any, res: any) {
         const params = new URLSearchParams();
         const cleanedSearchTerm = searchTerm.trim();
 
-        // Determinar si el término de búsqueda es un email o un teléfono
+        // Determinar si el término de búsqueda es un email, un teléfono o un nombre
         if (cleanedSearchTerm.includes('@')) {
             params.append('email', cleanedSearchTerm);
         } else if (/^[0-9+\-()\s]+$/.test(cleanedSearchTerm)) {
             params.append('telefono', cleanedSearchTerm.replace(/\s/g, ''));
         } else {
-            // Si no es un formato reconocible, no buscar para evitar errores
-            return res.status(200).json([]);
+            // Si no es un email ni un teléfono, asumimos que es un nombre
+            params.append('nombre', cleanedSearchTerm);
         }
         
-        // CORRECCIÓN: Usar el endpoint y la construcción de URL correctos
         const crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/?${params.toString()}`;
 
         const crmResponse = await fetch(crmApiUrl, {
             method: 'GET',
             headers: {
-                // CORRECCIÓN: Usar 'Token' en lugar de 'Authorization'
                 'Token': CRM_API_KEY,
                 'Content-Type': 'application/json'
             },

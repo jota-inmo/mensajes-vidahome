@@ -1,5 +1,5 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -32,15 +32,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const result = await model.generateContent(`Genera una plantilla de mensaje concisa y profesional para WhatsApp basada en la siguiente situación. El mensaje debe ser amigable, atractivo y listo para enviar. Incluye marcadores de posición como [nombre] o [empresa] donde sea apropiado. Escribe la respuesta en español. Situación: "${prompt}"`);
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Genera una plantilla de mensaje concisa y profesional para WhatsApp basada en la siguiente situación. El mensaje debe ser amigable, atractivo y listo para enviar. Incluye marcadores de posición como [nombre] o [empresa] donde sea apropiado. Escribe la respuesta en español. Situación: "${prompt}"`,
+    });
     
-    const response = await result.response;
-    const text = response.text();
-    
-    res.status(200).json({ text });
+    res.status(200).json({ text: response.text });
 
   } catch (error) {
     console.error("Error en la función de backend para Gemini:", error);

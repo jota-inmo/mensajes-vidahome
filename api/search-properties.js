@@ -18,10 +18,8 @@ export default async function handler(req, res) {
     if (req.method !== 'GET') {
       return res.status(405).json({ error: 'Method Not Allowed' });
     }
-    console.log("SEARCH-PROPERTIES: Function started.");
 
     const { searchTerm } = req.query;
-    console.log(`SEARCH-PROPERTIES: Received searchTerm: "${searchTerm}"`);
 
     const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL?.replace(/\/$/, '');
     const CRM_API_KEY = process.env.CRM_API_KEY;
@@ -30,40 +28,35 @@ export default async function handler(req, res) {
       console.error("SEARCH-PROPERTIES: Missing CRM environment variables.");
       return res.status(500).json({ error: 'La configuración del CRM no está completa en el servidor.' });
     }
-    console.log("SEARCH-PROPERTIES: CRM environment variables are present.");
-
+    
     const query = typeof searchTerm === 'string' ? searchTerm.trim() : '';
     const endpointPath = `${CRM_API_BASE_URL}/propiedades/`;
-    const params = new URLSearchParams();
+    let crmApiUrl;
 
     if (query) {
-      if (/^\d+$/.test(query)) {
-        params.append('cod_ofer', query);
-      } else {
+        const params = new URLSearchParams();
+        // Según la indicación del usuario, la búsqueda siempre se realiza con el parámetro 'ref'.
         params.append('ref', query);
-      }
+        crmApiUrl = `${endpointPath}?${params.toString()}`;
+    } else {
+        crmApiUrl = `${endpointPath}?listado`;
     }
-
-    const crmApiUrl = `${endpointPath}?${params.toString()}`;
-    console.log(`SEARCH-PROPERTIES: Fetching from CRM URL: ${crmApiUrl}`);
 
     const crmResponse = await fetch(crmApiUrl, {
       method: 'GET',
       headers: {
-        'Token': CRM_API_KEY,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Token': CRM_API_KEY
       }
     });
-    console.log(`SEARCH-PROPERTIES: CRM response status: ${crmResponse.status}`);
 
     if (crmResponse.status === 404) {
-      console.log("SEARCH-PROPERTIES: CRM returned 404, returning empty array.");
       return res.status(200).json([]);
     }
 
     if (!crmResponse.ok) {
       const errorText = await crmResponse.text();
-      console.error(`SEARCH-PROPERTIES: CRM returned non-OK status. Status: ${crmResponse.status}. Body: ${errorText}`);
+      console.error(`SEARCH-PROPERTIES: CRM Error: ${crmResponse.status} - ${errorText}`);
       return res.status(crmResponse.status).json({ error: 'Error al comunicarse con el CRM.' });
     }
 
@@ -86,11 +79,10 @@ export default async function handler(req, res) {
       };
     });
 
-    console.log(`SEARCH-PROPERTIES: Successfully adapted ${adaptedProperties.length} properties. Sending response.`);
     res.status(200).json(adaptedProperties);
 
   } catch (error) {
-    console.error('SEARCH-PROPERTIES: Unhandled error in handler:', error.message, error.stack);
+    console.error('SEARCH-PROPERTIES: Unhandled error in handler:', error.message);
     res.status(500).json({ error: 'Error interno del servidor al buscar propiedades.' });
   }
 }
