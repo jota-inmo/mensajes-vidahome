@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Property } from '../types';
 import { Card } from './ui/Card';
@@ -23,13 +24,13 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    // Debounce the search to avoid excessive API calls
+    // Debounce to avoid excessive API calls
     const handler = setTimeout(() => {
       fetchProperties(searchTerm).then(fetchedProperties => {
         setProperties(fetchedProperties);
         setIsLoading(false);
       });
-    }, 300);
+    }, 500); // Use debounce for both initial load and search
 
     return () => {
       clearTimeout(handler);
@@ -52,15 +53,16 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
       </div>
       
       <Input
-        placeholder="Buscar por referencia o título..."
+        placeholder="Buscar por referencia o ver recientes..."
         className="mb-4"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        aria-label="Buscar propiedad por referencia"
       />
 
       <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
         {isLoading ? (
-            <p className="text-slate-500 text-center py-4">Buscando propiedades...</p>
+            <p className="text-slate-500 text-center py-4">{searchTerm ? 'Buscando propiedades...' : 'Cargando propiedades recientes...'}</p>
         ) : properties.length > 0 ? (
           properties.map((property) => (
             <div
@@ -88,7 +90,7 @@ const PropertyManager: React.FC<PropertyManagerProps> = ({
             </div>
           ))
         ) : (
-          <p className="text-slate-500 text-center py-4">No se encontraron propiedades.</p>
+          <p className="text-slate-500 text-center py-4">{searchTerm ? 'No se encontraron propiedades.' : 'No hay propiedades recientes para mostrar.'}</p>
         )}
       </div>
     </Card>

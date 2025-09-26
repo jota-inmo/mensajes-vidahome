@@ -386,7 +386,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
     try {
         const templatesCollection = db.collection('plantillas').where('language', '==', language);
         const templatesSnapshot = await templatesCollection.get();
-        const templatesList = templatesSnapshot.docs.map(doc => {
+        const templatesList = templatesSnapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -398,7 +398,7 @@ const fetchTemplatesFromDB = async (language: string): Promise<MessageTemplate[]
                 language: String(data.language ?? 'es'),
             };
         });
-        templatesList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        templatesList.sort((a: MessageTemplate, b: MessageTemplate) => b.createdAt.getTime() - a.createdAt.getTime());
         return templatesList;
     } catch (error) {
         console.error("Error fetching templates:", error);
@@ -410,7 +410,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
     try {
         const recipientsCollection = db.collection('destinatarios');
         const recipientsSnapshot = await recipientsCollection.get();
-        const recipientsList = recipientsSnapshot.docs.map(doc => {
+        const recipientsList = recipientsSnapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: String(doc.id),
@@ -419,7 +419,7 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
                 createdAt: data.createdAt instanceof firebase.firestore.Timestamp ? data.createdAt.toDate() : new Date(),
             };
         });
-        recipientsList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        recipientsList.sort((a: Recipient, b: Recipient) => b.createdAt.getTime() - a.createdAt.getTime());
         return recipientsList;
     } catch (error) {
         console.error("Error fetching recipients:", error);
@@ -428,13 +428,11 @@ const fetchRecipientsFromDB = async (): Promise<Recipient[]> => {
 };
 
 const App: React.FC = () => {
-  // FIX: Replaced firebase.User with any to resolve typing issue with global Firebase script.
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // Admin state for editing other agents
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [agentToEdit, setAgentToEdit] = useState<Agent | null>(null);
 
@@ -453,7 +451,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // FIX: Replaced firebase.User with any to resolve typing issue with global Firebase script.
     const unsubscribe = auth.onAuthStateChanged(async (user: any | null) => {
         setCurrentUser(user);
         if (user) {
@@ -660,7 +657,6 @@ const App: React.FC = () => {
     auth.signOut();
   };
 
-  // Admin handlers for editing profiles
   const handleOpenProfileEditor = (agent: Agent) => {
     setAgentToEdit(agent);
     setIsProfileModalOpen(true);
@@ -669,10 +665,42 @@ const App: React.FC = () => {
   const handleProfileUpdate = async (data: { name: string, phone: string }) => {
     if (!agentToEdit) return;
     await updateAgentProfile(agentToEdit.id, data);
-    const updatedAgents = await fetchAllAgents(); // Refetch all agents
+    const updatedAgents = await fetchAllAgents();
     setAgents(updatedAgents);
   };
 
+  const handleCreateAgent = async (data: { name: string, email: string, password: string }): Promise<string | null> => {
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(data.email, data.password);
+      const user = userCredential.user;
+
+      if (user) {
+        await user.updateProfile({ displayName: data.name });
+        await db.collection('usuarios').doc(user.uid).set({
+          nombre: data.name,
+          email: data.email,
+          telefono: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      const updatedAgents = await fetchAllAgents();
+      setAgents(updatedAgents);
+      return null;
+    } catch (error: any) {
+      console.error("Error creating agent:", error);
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          return 'Este correo electrónico ya está registrado.';
+        case 'auth/invalid-email':
+          return 'El formato del correo electrónico no es válido.';
+        case 'auth/weak-password':
+          return 'La contraseña es demasiado débil (mín. 6 caracteres).';
+        default:
+          return 'Ocurrió un error inesperado al crear el agente.';
+      }
+    }
+  };
 
   if (authLoading) {
     return (
@@ -775,7 +803,11 @@ const App: React.FC = () => {
           </div>
           {isAdmin && (
               <div className="lg:col-span-5">
-                  <AdminPanel agents={agents} onEditAgent={handleOpenProfileEditor} />
+                  <AdminPanel 
+                    agents={agents} 
+                    onEditAgent={handleOpenProfileEditor}
+                    onCreateAgent={handleCreateAgent}
+                  />
               </div>
           )}
         </main>

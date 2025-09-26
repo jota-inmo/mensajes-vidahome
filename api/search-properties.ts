@@ -22,8 +22,8 @@ export default async function handler(req: any, res: any) {
         const { searchTerm } = req.query;
         console.log(`SEARCH-PROPERTIES: Received searchTerm: "${searchTerm}"`);
 
+        const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL?.replace(/\/$/, '');
         const CRM_API_KEY = process.env.CRM_API_KEY;
-        const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
 
         if (!CRM_API_KEY || !CRM_API_BASE_URL) {
             console.error("SEARCH-PROPERTIES: Missing CRM environment variables.");
@@ -43,9 +43,11 @@ export default async function handler(req: any, res: any) {
             } else {
                 params.append('ref', query);
             }
+            // FIX: Added a trailing slash before the query parameters as required by the API documentation.
             crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?${params.toString()}`;
         } else {
             // If no search term, fetch the list of properties
+            // FIX: Added a trailing slash before the query parameters as required by the API documentation.
             crmApiUrl = `${CRM_API_BASE_URL}/propiedades/?listado`;
         }
         

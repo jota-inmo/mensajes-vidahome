@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Recipient, Client } from '../types';
 import { Button } from './ui/Button';
@@ -100,7 +101,7 @@ const RecipientManager: React.FC<RecipientManagerProps> = ({
           <label htmlFor="search-client" className="block text-sm font-medium text-slate-400 mb-1">Buscar Cliente en CRM</label>
           <Input 
             id="search-client"
-            placeholder="Buscar por nombre o teléfono..."
+            placeholder="Buscar por teléfono o email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

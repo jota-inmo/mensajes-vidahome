@@ -20,8 +20,8 @@ export default async function handler(req: any, res: any) {
         const { searchTerm } = req.query;
         console.log(`SEARCH-CLIENTS: Received searchTerm: "${searchTerm}"`);
         
+        const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL?.replace(/\/$/, '');
         const CRM_API_KEY = process.env.CRM_API_KEY;
-        const CRM_API_BASE_URL = process.env.CRM_API_BASE_URL;
 
         if (!CRM_API_KEY || !CRM_API_BASE_URL) {
             console.error("SEARCH-CLIENTS: Missing CRM environment variables.");
@@ -35,7 +35,6 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json([]);
         }
 
-        let crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/`;
         const params = new URLSearchParams();
 
         if (searchTerm.includes('@')) {
@@ -43,13 +42,13 @@ export default async function handler(req: any, res: any) {
         } else if (/^[0-9+\-()\s]+$/.test(searchTerm)) {
             params.append('telefono', searchTerm.replace(/\s/g, ''));
         } else {
-            // Searching by name is not supported by the /clientes/buscar/ endpoint.
-            // Return empty results immediately if it's not an email or phone.
+            // As per documentation, searching by name is not supported by this endpoint.
             console.log("SEARCH-CLIENTS: Search term is not an email or phone, returning empty array.");
             return res.status(200).json([]);
         }
         
-        crmApiUrl += `?${params.toString()}`;
+        // FIX: Added a trailing slash before the query parameters as required by the API documentation.
+        const crmApiUrl = `${CRM_API_BASE_URL}/clientes/buscar/?${params.toString()}`;
         console.log(`SEARCH-CLIENTS: Fetching from CRM URL: ${crmApiUrl}`);
 
         const crmResponse = await fetch(crmApiUrl, {
@@ -73,7 +72,7 @@ export default async function handler(req: any, res: any) {
         }
 
         const data: InmovillaClient[] | InmovillaClient = await crmResponse.json();
-        const dataArray = Array.isArray(data) ? data : [data];
+        const dataArray = Array.isArray(data) ? data : (data ? [data] : []);
         
         const adaptedClients = dataArray.map(c => ({
             name: `${c.nombre || ''} ${c.apellidos || ''}`.trim(),

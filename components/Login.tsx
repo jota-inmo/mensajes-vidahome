@@ -1,59 +1,80 @@
 
+
 import React, { useState } from 'react';
-import { auth, db } from '../services/firebase';
+import { auth } from '../services/firebase';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { LogoIcon, GoogleIcon } from './ui/Icons';
-
-declare var firebase: any;
+import { Input } from './ui/Input';
+import { LogoIcon, MailIcon, LockClosedIcon } from './ui/Icons';
 
 const Login: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setIsLoading(true);
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const requiredDomain = 'vidahome.es'; // Restringe el acceso a este dominio
-    provider.setCustomParameters({
-      hd: requiredDomain
-    });
-
-    try {
-      const result = await auth.signInWithPopup(provider);
-      const user = result.user;
-
-      if (user && user.email && user.email.endsWith('@' + requiredDomain)) {
-        // El usuario pertenece al dominio correcto, verificamos si su perfil existe
-        const userDocRef = db.collection('usuarios').doc(user.uid);
-        const doc = await userDocRef.get();
-
-        if (!doc.exists) {
-          // El perfil no existe, lo creamos
-          await userDocRef.set({
-            nombre: user.displayName || 'Agente',
-            email: user.email,
-            telefono: user.phoneNumber || '',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-      } else {
-        // Si el usuario logró iniciar sesión con otra cuenta, lo deslogueamos
-        await auth.signOut();
-        setError(`Acceso restringido. Solo se permiten cuentas de @${requiredDomain}.`);
-      }
-    } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('El inicio de sesión fue cancelado.');
-      } else {
-        setError('Ocurrió un error al iniciar sesión. Por favor, inténtalo de nuevo.');
-      }
-      console.error(err);
-    } finally {
-        setIsLoading(false);
+  const getErrorMessage = (code: string): string => {
+    switch (code) {
+      case 'auth/user-not-found':
+      case 'auth/invalid-credential':
+        return 'Credenciales incorrectas. Verifica tu email y contraseña.';
+      case 'auth/wrong-password':
+        return 'La contraseña es incorrecta. Por favor, inténtalo de nuevo.';
+      case 'auth/invalid-email':
+        return 'El formato del correo electrónico no es válido.';
+      case 'auth/operation-not-allowed':
+        return 'Error: El inicio de sesión con email/contraseña no está habilitado en la configuración de Firebase.';
+      case 'auth/too-many-requests':
+        return 'Has intentado iniciar sesión demasiadas veces. Por favor, inténtalo más tarde.';
+      default:
+        return `Ocurrió un error inesperado. Código: ${code}`;
     }
   };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setResetMessage(null);
+    setResetError(null);
+    setIsLoading(true);
+
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // onAuthStateChanged in App.tsx will handle navigation
+    } catch (err: any) {
+      setError(getErrorMessage(err.code));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setError(null);
+    setResetError(null);
+    setResetMessage(null);
+
+    if (!email) {
+      setResetError("Por favor, introduce tu correo para restablecer la contraseña.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await auth.sendPasswordResetEmail(email);
+      setResetMessage("Correo de restablecimiento enviado. Revisa tu bandeja de entrada.");
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        setResetError("No se encontró ningún usuario con ese correo electrónico.");
+      } else {
+        setResetError("Ocurrió un error al intentar enviar el correo.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="bg-slate-900 min-h-screen flex flex-col items-center justify-center p-4">
@@ -61,24 +82,60 @@ const Login: React.FC = () => {
         <LogoIcon className="h-12 w-12 text-emerald-400"/>
         <h1 className="text-4xl font-bold text-white tracking-tight">Centro de Mensajes</h1>
       </div>
-      <Card className="w-full max-w-md text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">
+      <Card className="w-full max-w-sm">
+        <h2 className="text-2xl font-bold text-white mb-2 text-center">
           Acceso para Agentes
         </h2>
-        <p className="text-slate-400 mb-8">Inicia sesión con tu cuenta de Google de la empresa.</p>
+        <p className="text-slate-400 mb-6 text-center">
+          Introduce tus credenciales para continuar.
+        </p>
         
-        <div className="space-y-4">
-            <Button 
-                onClick={handleGoogleSignIn} 
-                className="w-full !bg-white hover:!bg-slate-200 !text-slate-800"
-                disabled={isLoading}
-            >
-                <GoogleIcon className="w-5 h-5 mr-3" />
-                {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión con Google'}
-            </Button>
-            {error && <p className="text-red-400 text-sm pt-2">{error}</p>}
-        </div>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="relative">
+            <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="correo@vidahome.es"
+              required
+              className="pl-10"
+              aria-label="Correo electrónico"
+            />
+          </div>
+          <div className="relative">
+            <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              required
+              className="pl-10"
+              aria-label="Contraseña"
+            />
+          </div>
 
+          {error && <p role="alert" className="text-red-400 text-sm text-center">{error}</p>}
+          {resetError && <p role="alert" className="text-red-400 text-sm text-center">{resetError}</p>}
+          {resetMessage && <p role="status" className="text-green-400 text-sm text-center">{resetMessage}</p>}
+          
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Cargando...' : 'Iniciar Sesión'}
+          </Button>
+        </form>
+        <div className="mt-4 text-center">
+            <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isLoading}
+                className="text-sm text-emerald-400 hover:text-emerald-300 hover:underline focus:outline-none disabled:opacity-50"
+            >
+                ¿Has olvidado tu contraseña?
+            </button>
+        </div>
       </Card>
     </div>
   );
